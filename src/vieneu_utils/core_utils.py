@@ -1,7 +1,7 @@
 import re
 import os
 from dataclasses import dataclass
-from typing import List, Tuple, Optional
+from typing import List, Mapping, Tuple, Optional
 
 import numpy as np
 
@@ -167,9 +167,12 @@ def max_expected_frames(phonemes: str) -> int:
     return cap
 
 
-def gaps_to_silence(gaps: List[str]) -> List[float]:
+def gaps_to_silence(
+    gaps: List[str], overrides: Optional[Mapping[str, float]] = None
+) -> List[float]:
     """Map list loại-ranh-giới -> list TỔNG khoảng nghỉ (giây) cho ``join_audio_chunks``."""
-    return [V3_GAP_SILENCE.get(g, V3_GAP_SILENCE["sentence"]) for g in gaps]
+    table = V3_GAP_SILENCE if overrides is None else {**V3_GAP_SILENCE, **overrides}
+    return [table.get(g, table["sentence"]) for g in gaps]
 
 
 def edge_silence(

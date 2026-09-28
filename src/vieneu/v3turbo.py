@@ -604,6 +604,9 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
         max_chars: int = 256,
         silence_p: float = 0.15,
         crossfade_p: float = 0.0,
+        minor_pause_s: Optional[float] = None,
+        sentence_pause_s: Optional[float] = None,
+        paragraph_pause_s: Optional[float] = None,
         apply_watermark: bool = True,
         batch_size: Optional[int] = None,   # GPU: trần chunk/forward (None → self.max_batch_size; 1 → tắt batch)
         **kwargs: Any,
@@ -632,8 +635,11 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
         )
 
         # Im lặng theo loại ranh giới: ngắt đoạn > hết câu > ngắt trong câu.
+        gap_overrides = {k: v for k, v in {
+            "minor": minor_pause_s, "sentence": sentence_pause_s, "para": paragraph_pause_s,
+        }.items() if v is not None}
         final_wav = join_audio_chunks(
-            all_wavs, self.sample_rate, silence_ps=gaps_to_silence(gaps)
+            all_wavs, self.sample_rate, silence_ps=gaps_to_silence(gaps, gap_overrides)
         )
         return self._apply_watermark(final_wav) if apply_watermark else final_wav
 
@@ -652,6 +658,9 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
         repetition_penalty: float = 1.2,
         repetition_window: int = DEFAULT_REP_WINDOW,
         max_chars: int = 256,
+        minor_pause_s: Optional[float] = None,
+        sentence_pause_s: Optional[float] = None,
+        paragraph_pause_s: Optional[float] = None,
         apply_watermark: bool = True,
         **kwargs: Any,
     ) -> Generator[np.ndarray, None, None]:
@@ -666,7 +675,10 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
         """
         speaker_emb, ref_codes = self._resolve_ref(voice, ref_audio, denoise, use_ref_codes)
         chunks, gaps = normalize_to_chunks_v3_with_gaps(text, max_chars=max_chars)
-        pauses = gaps_to_silence(gaps)
+        gap_overrides = {k: v for k, v in {
+            "minor": minor_pause_s, "sentence": sentence_pause_s, "para": paragraph_pause_s,
+        }.items() if v is not None}
+        pauses = gaps_to_silence(gaps, gap_overrides)
         sampling = dict(
             temperature=temperature, top_k=top_k, top_p=top_p,
             repetition_penalty=repetition_penalty, repetition_window=repetition_window,
@@ -772,6 +784,9 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
         repetition_penalty: float = 1.2,
         repetition_window: int = DEFAULT_REP_WINDOW,
         max_chars: int = 256,
+        minor_pause_s: Optional[float] = None,
+        sentence_pause_s: Optional[float] = None,
+        paragraph_pause_s: Optional[float] = None,
         apply_watermark: bool = True,
         batch_size: Optional[int] = None,
         **kwargs: Any,
@@ -794,6 +809,9 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
             max_new_frames=max_new_frames, repetition_penalty=repetition_penalty,
             repetition_window=repetition_window,
         )
+        gap_overrides = {k: v for k, v in {
+            "minor": minor_pause_s, "sentence": sentence_pause_s, "para": paragraph_pause_s,
+        }.items() if v is not None}
 
         # Cắt chunk từng text, nhớ chunk thuộc text nào (owner) và gaps để join lại.
         per_text_gaps: List[Any] = []
@@ -825,7 +843,8 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
                 results.append(empty)
                 continue
             joined = join_audio_chunks(
-                grouped[ti], self.sample_rate, silence_ps=gaps_to_silence(per_text_gaps[ti])
+                grouped[ti], self.sample_rate,
+                silence_ps=gaps_to_silence(per_text_gaps[ti], gap_overrides)
             )
             results.append(self._apply_watermark(joined) if apply_watermark else joined)
         return results

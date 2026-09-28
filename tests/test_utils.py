@@ -374,6 +374,16 @@ def test_join_audio_chunks_silence_ps_gap_table():
     assert V3_GAP_SILENCE["para"] > V3_GAP_SILENCE["sentence"] > V3_GAP_SILENCE["minor"] > 0
 
 
+def test_gaps_to_silence_optional_native_overrides():
+    from vieneu_utils.core_utils import gaps_to_silence
+
+    assert gaps_to_silence(["minor", "sentence", "para"]) == [0.30, 0.50, 0.70]
+    assert gaps_to_silence(
+        ["minor", "sentence", "para"],
+        {"minor": 0.25, "sentence": 0.45, "para": 0.60},
+    ) == [0.25, 0.45, 0.60]
+
+
 def test_pause_pad_samples_streaming():
     sr = 16000
     prev = _tone_with_silence(sr, 0.0, 0.3, 0.10)
